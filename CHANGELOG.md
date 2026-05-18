@@ -12,6 +12,16 @@ a deprecation window (see `GOVERNANCE.md` § Scope discipline).
 
 ### Added
 
+- **C006 `column-type-mismatch-on-insert`** (error) - flags `INSERT`
+  statements where a value literal's kind disagrees with the contract
+  column type. Coarse buckets (numeric / string / date / boolean)
+  catch the common copy-paste class: `INSERT INTO orders (total)
+  VALUES ('not a number')` when `total` is `decimal`. Lenient on
+  `NULL`, parameter placeholders (`?`, `%s`, `:name`, `@name`, `$1`),
+  function calls, and bare identifiers, since their type can't be
+  decided statically. Multi-row INSERTs are walked tuple-by-tuple
+  with a paren-and-quote-aware splitter so commas inside string
+  literals or function arguments don't break the parse. Resolves #44.
 - **W021 `having-without-group-by`** - warns when `HAVING` appears
   without a preceding `GROUP BY` in the same query block. The query
   becomes a single implicit group, almost always a typo for `WHERE`.
