@@ -224,6 +224,20 @@ class TestWarningRules:
         )
         assert rule.check_statement(statement, 1, "test.sql") is not None
 
+    def test_w021_does_not_flag_inner_only_having_with_inner_group_by(self) -> None:
+        """Regression for the known false positive: HAVING and GROUP BY both
+        inside a subquery, no outer HAVING -- the rule must stay silent.
+        """
+        from sql_guard.rules.warnings import HavingWithoutGroupBy
+
+        rule = HavingWithoutGroupBy()
+        statement = (
+            "SELECT a FROM ("
+            "    SELECT x, COUNT(*) AS c FROM t GROUP BY x HAVING COUNT(*) > 1"
+            ") sub WHERE sub.c > 5;"
+        )
+        assert rule.check_statement(statement, 1, "test.sql") is None
+
     def test_w011_passes_on_union_all(self) -> None:
         from sql_guard.rules.warnings import UnionWithoutAll
 

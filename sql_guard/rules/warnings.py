@@ -188,29 +188,32 @@ class HavingWithoutGroupBy(Rule):
 
     def check_statement(self, statement: str, start_line: int, file: str) -> Finding | None:
         statement = self._comments.sub("", statement)
-        having_match = self._having.search(statement)
-        if not having_match:
-            return None
-        group_by_match = next(
-            (
-                match
-                for match in self._group_by.finditer(statement[: having_match.start()])
-                if self._paren_depth(statement[: match.start()]) == 0
-            ),
-            None,
-        )
-        # If HAVING appears and either there is no GROUP BY at all,
-        # or HAVING appears before GROUP BY (which is syntactically wrong
-        # but the SQL engine still accepts in some dialects), flag it.
-        if not group_by_match:
-            return Finding(
-                rule_id=self.id,
-                severity=self.severity,
-                file=file,
-                line=start_line,
-                message="HAVING without GROUP BY -- did you mean WHERE?",
-                suggestion="Use WHERE for row filtering, or add GROUP BY before HAVING",
+        # Walk every HAVING in the statement, not just the first, so a HAVING in
+        # a subquery cannot mask one in the outer query.
+        for having_match in self._having.finditer(statement):
+            # Only the top-level (depth-0) HAVING is in scope. A HAVING inside a
+            # parenthesised subquery is the subquery's own concern -- the SQL parser
+            # will already reject it if invalid, and pairing it with an outer
+            # GROUP BY would produce a false positive (this rule used to do that).
+            if self._paren_depth(statement[: having_match.start()]) > 0:
+                continue
+            group_by_match = next(
+                (
+                    match
+                    for match in self._group_by.finditer(statement[: having_match.start()])
+                    if self._paren_depth(statement[: match.start()]) == 0
+                ),
+                None,
             )
+            if not group_by_match:
+                return Finding(
+                    rule_id=self.id,
+                    severity=self.severity,
+                    file=file,
+                    line=start_line,
+                    message="HAVING without GROUP BY -- did you mean WHERE?",
+                    suggestion="Use WHERE for row filtering, or add GROUP BY before HAVING",
+                )
         return None
 
 
