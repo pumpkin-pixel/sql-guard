@@ -283,6 +283,7 @@ working example.
 | C003 | `not-null-violation` | `INSERT INTO orders (id) VALUES (1)` -- omits a NOT NULL column |
 | C004 | `primary-key-missing-on-insert` | INSERT omits a PK column with no default |
 | C005 | `unmapped-fk` | `JOIN ... ON o.id = c.id` -- columns have no FK relationship in the contract |
+| C006 | `column-type-mismatch-on-insert` | `INSERT INTO orders (total) VALUES ('not a number')` -- value's literal kind disagrees with the contract type |
 
 Two helper subcommands round out the workflow:
 
