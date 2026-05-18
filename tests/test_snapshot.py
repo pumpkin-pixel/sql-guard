@@ -17,6 +17,7 @@ import yaml
 sqlalchemy = pytest.importorskip("sqlalchemy")
 
 from sql_guard.snapshot import (  # noqa: E402  -- after importorskip
+    SnapshotError,
     introspect,
     write_snapshot,
 )
@@ -159,3 +160,52 @@ class TestWriteSnapshot:
         # And keys are alphabetised, not insertion-ordered.
         text = out_a.read_text()
         assert "a_table" in text.split("z_table")[0]
+
+
+# ---------------------------------------------------------------------------
+# Round-trip: introspect -> write -> load as a Contract
+# ---------------------------------------------------------------------------
+
+
+class TestRoundTrip:
+    def test_snapshot_round_trips_through_contract_loader(
+        self, sqlite_dsn: str, tmp_path: Path
+    ) -> None:
+        from sql_guard.contracts import Contract
+
+        snap = introspect(sqlite_dsn)
+        out = tmp_path / "contract.yml"
+        write_snapshot(snap, out)
+
+        contract = Contract.from_file(out)
+        assert set(contract.tables) == {"customers", "orders", "audit_log"}
+        orders = contract.get_table("orders")
+        assert orders is not None
+        assert "id" in orders.primary_keys
+        # customer_id is NOT NULL, no default, not PK -> required for INSERT
+        assert "customer_id" in orders.required_columns
+
+
+# ---------------------------------------------------------------------------
+# Error paths
+# ---------------------------------------------------------------------------
+
+
+class TestSnapshotError:
+    def test_missing_sqlalchemy_raises_snapshot_error(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """If SQLAlchemy isn't importable, _require_sqlalchemy() should give the install hint."""
+        import builtins
+        from sql_guard import snapshot as snapshot_mod
+
+        real_import = builtins.__import__
+
+        def fake_import(name: str, *args: Any, **kwargs: Any) -> Any:
+            if name == "sqlalchemy":
+                raise ImportError("simulated missing sqlalchemy")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", fake_import)
+        with pytest.raises(SnapshotError, match="sql-sop\\[snapshot\\]"):
+            snapshot_mod._require_sqlalchemy()
