@@ -280,7 +280,7 @@ class TestC005UnmappedForeignKey:
 def test_build_contract_rules_with_contract_returns_all(contract):
     rules = build_contract_rules(contract)
     ids = {r.id for r in rules}
-    assert ids == {"C001", "C002", "C003", "C004", "C005"}
+    assert ids == {"C001", "C002", "C003", "C004", "C005", "C006"}
 
 
 def test_build_contract_rules_without_contract_returns_empty():

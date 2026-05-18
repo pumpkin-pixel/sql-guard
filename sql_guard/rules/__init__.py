@@ -56,6 +56,7 @@ from sql_guard.rules.tsql import (
 from sql_guard.rules.contracts import (
     CONTRACT_RULE_CLASSES,
     ColumnNotInContract,
+    ColumnTypeMismatchOnInsert,
     NotNullViolation,
     PrimaryKeyMissingOnInsert,
     TableNotInContract,
@@ -67,6 +68,7 @@ __all__ = [
     "ALL_RULES",
     "CONTRACT_RULE_CLASSES",
     "ColumnNotInContract",
+    "ColumnTypeMismatchOnInsert",
     "NotNullViolation",
     "PrimaryKeyMissingOnInsert",
     "Rule",
