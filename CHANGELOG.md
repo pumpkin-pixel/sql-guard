@@ -60,6 +60,18 @@ a deprecation window (see `GOVERNANCE.md` § Scope discipline).
 
 ### Fixed
 
+- **W021 `having-without-group-by`** - removed the documented false
+  positive on nested-subquery `HAVING`. Previously the rule walked the
+  first `HAVING` in the statement and looked for a depth-0 `GROUP BY`
+  before it; a query whose only `HAVING` and `GROUP BY` both lived
+  inside a subquery (`SELECT a FROM (SELECT x, COUNT(*) FROM t GROUP
+  BY x HAVING COUNT(*) > 1) sub`) would fire because the inner
+  `GROUP BY` was filtered out by the depth-0 check. Fixed by walking
+  every `HAVING` with `finditer` and skipping any whose paren depth is
+  greater than zero -- a subquery's `HAVING` is the subquery's
+  concern, not the outer linter's. An outer-scope `HAVING` with a
+  subquery-scope `HAVING` still fires correctly. Three regression
+  tests added in `tests/test_rules.py`.
 - **S001 `implicit-cross-join`** - the previous regex only matched a
   comma immediately after the first word after `FROM`. Most real-world
   comma-joins slipped through silently: aliased tables
