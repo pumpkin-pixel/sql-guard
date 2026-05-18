@@ -238,6 +238,34 @@ class TestWarningRules:
         )
         assert rule.check_statement(statement, 1, "test.sql") is None
 
+    def test_w021_does_not_flag_inner_only_having_without_outer_having(self) -> None:
+        """HAVING inside a subquery, no GROUP BY at the subquery level either,
+        no HAVING at the outer level. Out of scope for W021 -- the rule sees
+        only one HAVING and it's at depth > 0, so no finding.
+        """
+        from sql_guard.rules.warnings import HavingWithoutGroupBy
+
+        rule = HavingWithoutGroupBy()
+        statement = "SELECT a FROM (SELECT x FROM t HAVING x > 0) sub;"
+        assert rule.check_statement(statement, 1, "test.sql") is None
+
+    def test_w021_flags_outer_having_even_when_subquery_has_its_own(self) -> None:
+        """Inner subquery has a valid HAVING/GROUP BY pair; the outer query
+        has a standalone HAVING with no outer GROUP BY. The outer one must
+        still fire.
+        """
+        from sql_guard.rules.warnings import HavingWithoutGroupBy
+
+        rule = HavingWithoutGroupBy()
+        statement = (
+            "SELECT a, COUNT(*) FROM ("
+            "    SELECT x FROM t GROUP BY x HAVING COUNT(*) > 1"
+            ") sub HAVING COUNT(*) > 5;"
+        )
+        finding = rule.check_statement(statement, 1, "test.sql")
+        assert finding is not None
+        assert finding.rule_id == "W021"
+
     def test_w011_passes_on_union_all(self) -> None:
         from sql_guard.rules.warnings import UnionWithoutAll
 
